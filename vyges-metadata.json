@@ -3,24 +3,213 @@
   "x-version": "1.0.0",
   "name": "opentitan-sysrst-ctrl",
   "version": "0.1.0",
-  "description": "System reset controller with power button debouncing, auto-block, keyboard combo detection, pin override, and configurable wakeup. Manages EC reset, flash write-protect, and power button signals. TileLink-UL slave. Extracted from OpenTitan (lowRISC).",
+  "description": "The sysrst_ctrl module is a system reset controller for OpenTitan, providing configurable reset, wakeup, and interrupt handling functionality with support for alert signaling and input inversion.",
   "license": "Apache-2.0",
   "maturity": "production",
-  "target": ["asic", "fpga"],
-  "design_type": ["digital"],
-  "created": "2026-02-19T06:12:02Z",
-  "updated": "2026-03-27T19:35:00Z",
-  "source": {"type": "git", "url": "https://github.com/lowRISC/opentitan", "private": false, "rtl_path": "rtl"},
-  "maintainers": [{"name": "Vyges", "email": "team@vyges.com", "github": "vyges"}],
-  "interfaces": [{"type": "bus", "direction": "slave", "protocol": "TL-UL", "port": "tl", "width": 32}],
-  "architecture": {"type": "peripheral", "features": ["Power button debouncing and auto-block", "Keyboard combo detection (Ctrl+Alt+Del style)", "Pin value override for test/debug", "EC reset and flash write-protect control", "Configurable wakeup conditions", "12 RTL files, 9,543 lines"]},
-  "dependencies": [{"name": "opentitan-prim", "type": "library"}, {"name": "opentitan-tlul", "type": "bus"}],
-  "documentation": {"upstream": "https://opentitan.org/book/hw/ip/sysrst-ctrl/"},
-  "artifacts": {"total_rtl_lines": 9543},
-  "categories": {"primary": "peripheral", "secondary": ["power-management", "reset"], "tags": ["sysrst-ctrl", "reset", "power-button", "debounce", "wakeup", "keyboard", "opentitan", "tl-ul"]},
-  "trust": {"verification_level": "silicon_proven", "tapeout_count": 3, "maintained": true, "last_activity": "2026-03-27"},
-  "asic": {"flavor": "digital", "technology": ["sky130A"]},
-  "fpga": {"toolchain": ["Vivado", "Yosys"]},
-  "keywords": ["sysrst-ctrl", "opentitan", "tl-ul"],
-  "meta": {"template": {"generator": "manual (gold-standard pass 2026-03-27)"}, "schema": {"version": "1.0.0"}}
+  "target": [
+    "asic",
+    "fpga"
+  ],
+  "design_type": [
+    "digital"
+  ],
+  "created": "2026-03-27T23:06:02Z",
+  "updated": "2026-03-27T23:06:02Z",
+  "source": {
+    "type": "git",
+    "url": "https://github.com/lowRISC/opentitan",
+    "commit": "7fbd85829ec6354ef6497df69536cefe862c1f5a",
+    "ip_path": "hw/ip/sysrst_ctrl",
+    "private": false,
+    "containsEncryptedPayload": false,
+    "indexing": true
+  },
+  "maintainers": [
+    {
+      "name": "Vyges",
+      "email": "team@vyges.com",
+      "url": "https://vyges.com",
+      "github": "vyges"
+    }
+  ],
+  "interfaces": [
+    {
+      "type": "bus",
+      "direction": "slave",
+      "protocol": "TL-UL",
+      "port": "tl_i",
+      "width": 32,
+      "description": "TileLink host-to-device interface for register access."
+    },
+    {
+      "type": "bus",
+      "direction": "master",
+      "protocol": "TL-UL",
+      "port": "tl_o",
+      "width": 32,
+      "description": "TileLink device-to-host interface for register responses."
+    },
+    {
+      "type": "clock",
+      "direction": "input",
+      "port": "clk_i",
+      "width": 1,
+      "description": "24MHz always-on clock for configuration logic."
+    },
+    {
+      "type": "clock",
+      "direction": "input",
+      "port": "clk_aon_i",
+      "width": 1,
+      "description": "200KHz always-on clock for logic operations."
+    },
+    {
+      "type": "reset",
+      "direction": "input",
+      "port": "rst_ni",
+      "width": 1,
+      "description": "Power-on reset for the 24MHz clock domain."
+    },
+    {
+      "type": "reset",
+      "direction": "input",
+      "port": "rst_aon_ni",
+      "width": 1,
+      "description": "Power-on reset for the 200KHz clock domain."
+    },
+    {
+      "type": "interrupt",
+      "direction": "output",
+      "port": "intr_event_detected_o",
+      "width": 1,
+      "description": "Interrupt signal for event detection to PLIC."
+    },
+    {
+      "type": "alert",
+      "direction": "input",
+      "port": "alert_rx_i",
+      "width": 1,
+      "description": "Alert receiver interface for incoming alerts."
+    },
+    {
+      "type": "alert",
+      "direction": "output",
+      "port": "alert_tx_o",
+      "width": 1,
+      "description": "Alert transmitter interface for outgoing alerts."
+    },
+    {
+      "type": "gpio",
+      "direction": "input",
+      "port": "cio_pwrb_in_i",
+      "width": 1,
+      "description": "Power button input signal."
+    },
+    {
+      "type": "gpio",
+      "direction": "output",
+      "port": "cio_pwrb_out_o",
+      "width": 1,
+      "description": "Power button output signal with optional inversion."
+    }
+  ],
+  "parameters": [
+    {
+      "name": "AlertAsyncOn",
+      "type": "bit",
+      "default": "1'b1",
+      "description": "Determines if alerts are asynchronous."
+    },
+    {
+      "name": "AlertSkewCycles",
+      "type": "int",
+      "default": 1,
+      "description": "Number of cycles tolerated for differential skew on alert signals."
+    },
+    {
+      "name": "NumAlerts",
+      "type": "int",
+      "default": 1,
+      "description": "Number of alert signals supported."
+    }
+  ],
+  "performance": {},
+  "architecture": {
+    "type": "peripheral",
+    "features": [
+      "Configurable reset and wakeup handling",
+      "Interrupt generation for event detection",
+      "Alert signaling with configurable parameters",
+      "Input signal inversion and synchronization"
+    ]
+  },
+  "asic": {
+    "flavor": "digital",
+    "technology": [
+      "sky130A"
+    ]
+  },
+  "fpga": {
+    "toolchain": [
+      "Vivado"
+    ],
+    "devices": [
+      "Artix-7"
+    ]
+  },
+  "dependencies": [
+    {
+      "name": "prim_alert_pkg",
+      "type": "library",
+      "description": "Provides alert signaling primitives."
+    },
+    {
+      "name": "tlul_pkg",
+      "type": "library",
+      "description": "Defines TileLink Ultra-Lite protocol types."
+    }
+  ],
+  "test": {
+    "testbenches": [],
+    "status": "upstream_passing",
+    "coverage": "functional"
+  },
+  "documentation": {
+    "upstream": "https://github.com/lowRISC/opentitan/tree/master/hw/ip/sysrst_ctrl"
+  },
+  "artifacts": {
+    "total_rtl_lines": 9543
+  },
+  "categories": [
+    {
+      "main_category": "Control Logic",
+      "sub_category": "Reset Controllers"
+    }
+  ],
+  "keywords": [
+    "OpenTitan",
+    "System Reset Controller",
+    "TileLink",
+    "Alert Signaling",
+    "Interrupts",
+    "Reset Management"
+  ],
+  "trust": {
+    "verification_level": "silicon_proven",
+    "tapeout_count": 0,
+    "fpga_validated": false,
+    "formal_verified": false,
+    "maintained": true,
+    "last_activity": "2026-03-27T23:06:02Z"
+  },
+  "meta": {
+    "template": {
+      "generator": "github-models-ai",
+      "template_version": "1.0.0",
+      "generated_at": "2026-03-27T23:06:02Z"
+    },
+    "schema": {
+      "version": "1.0.0"
+    }
+  }
 }
