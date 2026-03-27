@@ -1,35 +1,29 @@
-# System Reset Control Technical Specification
+# OpenTitan
 
-[`sysrst_ctrl`](https://reports.opentitan.org/hw/ip/sysrst_ctrl/dv/latest/report.html):
-![](https://dashboards.lowrisc.org/badges/dv/sysrst_ctrl/test.svg)
-![](https://dashboards.lowrisc.org/badges/dv/sysrst_ctrl/passing.svg)
-![](https://dashboards.lowrisc.org/badges/dv/sysrst_ctrl/functional.svg)
-![](https://dashboards.lowrisc.org/badges/dv/sysrst_ctrl/code.svg)
+![OpenTitan logo](./doc/opentitan-logo.png)
 
-# Overview
+## About the project
 
-This document specifies the functionality of the System Reset Controller (`sysrst_ctrl`) that provides programmable hardware-level responses to trusted IOs and basic board-level reset sequencing capabilities.
-These capabilities include keyboard and button combination-triggered actions, reset stretching for system-level reset signals, and internal reset / wakeup requests that go to the OpenTitan reset and power manager blocks.
-This module conforms to the [Comportable guideline for peripheral functionality](../../../doc/contributing/hw/comportability/README.md).
-See that document for integration overview within the broader top level system.
+[OpenTitan](https://opentitan.org) is an open source silicon Root of Trust (RoT) project.
+OpenTitan will make the silicon RoT design and implementation more transparent, trustworthy, and secure for enterprises, platform providers, and chip manufacturers.
+OpenTitan is administered by [lowRISC CIC](https://www.lowrisc.org) as a collaborative project to produce high quality, open IP for instantiation as a full-featured product.
+See the [OpenTitan site](https://opentitan.org) and [OpenTitan docs](https://opentitan.org/book/) for more information about the project.
 
-## Features
+## About this repository
 
-The IP block implements the following features:
+This repository contains hardware, software and utilities written as part of the OpenTitan project.
+It is structured as monolithic repository, or "monorepo", where all components live in one repository.
+It exists to enable collaboration across partners participating in the OpenTitan project.
 
-- Always-on: uses the always-on power and clock domain
-- EC reset pulse duration control and stretching
-- Keyboard and button combination (combo) triggered action
-- AC_present can trigger interrupt
-- Configuration registers can be set and locked until the next chip reset
-- Pin output override
+## Documentation
 
-## Description
+The project contains comprehensive documentation of all IPs and tools.
+You can access it [online at opentitan.org/book/](https://opentitan.org/book/).
 
-The `sysrst_ctrl` logic is very simple.
-It looks up the configuration registers to decide how long the EC reset pulse duration and how long the key presses should be.
-Also what actions to take (e.g. Interrupt, EC reset, OpenTitan reset request, disconnect the battery from the power tree).
+## How to contribute
 
-## Compatibility
+Have a look at [CONTRIBUTING](CONTRIBUTING.md) and our [documentation on project organization and processes](./doc/project_governance/README.md) for guidelines on how to contribute code to this repository.
 
-The configuration programming interface is not based on any existing interface.
+## Licensing
+
+Unless otherwise noted, everything in this repository is covered by the Apache License, Version 2.0 (see [LICENSE](https://github.com/lowRISC/opentitan/blob/master/LICENSE) for full text).
