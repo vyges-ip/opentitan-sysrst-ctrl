@@ -130,7 +130,9 @@ module sysrst_ctrl_reg_top (
   logic intr_test_we;
   logic intr_test_wd;
   logic alert_test_we;
-  logic alert_test_wd;
+  logic alert_test_fatal_fault_wd;
+  logic alert_test_regwen_qs;
+  logic alert_test_regwen_wd;
   logic regwen_we;
   logic regwen_qs;
   logic regwen_wd;
@@ -1831,6 +1833,7 @@ module sysrst_ctrl_reg_top (
   ) u_intr_state (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (1'b0),
@@ -1859,6 +1862,7 @@ module sysrst_ctrl_reg_top (
   ) u_intr_enable (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (intr_enable_we),
@@ -1900,14 +1904,18 @@ module sysrst_ctrl_reg_top (
 
   // R[alert_test]: V(True)
   logic alert_test_qe;
-  logic [0:0] alert_test_flds_we;
+  logic [1:0] alert_test_flds_we;
   assign alert_test_qe = &alert_test_flds_we;
+  // Create REGWEN-gated WE signal
+  logic alert_test_gated_we;
+  assign alert_test_gated_we = alert_test_we && alert_test_regwen_qs;
+  //   F[fatal_fault]: 0:0
   prim_subreg_ext #(
     .DW    (1)
-  ) u_alert_test (
+  ) u_alert_test_fatal_fault (
     .re     (1'b0),
-    .we     (alert_test_we),
-    .wd     (alert_test_wd),
+    .we     (alert_test_gated_we),
+    .wd     (alert_test_fatal_fault_wd),
     .d      ('0),
     .qre    (),
     .qe     (alert_test_flds_we[0]),
@@ -1916,6 +1924,34 @@ module sysrst_ctrl_reg_top (
     .qs     ()
   );
   assign reg2hw.alert_test.qe = alert_test_qe;
+
+  //   F[regwen]: 31:31
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessW0C),
+    .RESVAL  (1'h1),
+    .Mubi    (1'b0)
+  ) u_alert_test_regwen (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
+
+    // from register interface
+    .we     (alert_test_we),
+    .wd     (alert_test_regwen_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (alert_test_flds_we[1]),
+    .q      (),
+    .ds     (),
+
+    // to register interface (read)
+    .qs     (alert_test_regwen_qs)
+  );
 
 
   // R[regwen]: V(False)
@@ -1927,6 +1963,7 @@ module sysrst_ctrl_reg_top (
   ) u_regwen (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (regwen_we),
@@ -1958,6 +1995,7 @@ module sysrst_ctrl_reg_top (
   ) u_ec_rst_ctl (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_ec_rst_ctl_gated_we),
@@ -1990,6 +2028,7 @@ module sysrst_ctrl_reg_top (
   ) u_ulp_ac_debounce_ctl (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_ulp_ac_debounce_ctl_gated_we),
@@ -2022,6 +2061,7 @@ module sysrst_ctrl_reg_top (
   ) u_ulp_lid_debounce_ctl (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_ulp_lid_debounce_ctl_gated_we),
@@ -2054,6 +2094,7 @@ module sysrst_ctrl_reg_top (
   ) u_ulp_pwrb_debounce_ctl (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_ulp_pwrb_debounce_ctl_gated_we),
@@ -2082,6 +2123,7 @@ module sysrst_ctrl_reg_top (
   ) u_ulp_ctl (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_ulp_ctl_we),
@@ -2110,6 +2152,7 @@ module sysrst_ctrl_reg_top (
   ) u_ulp_status (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (ulp_status_we),
@@ -2140,6 +2183,7 @@ module sysrst_ctrl_reg_top (
   ) u_wkup_status (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_wkup_status_we),
@@ -2172,6 +2216,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_invert_ctl_key0_in (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_invert_ctl_gated_we),
@@ -2199,6 +2244,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_invert_ctl_key0_out (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_invert_ctl_gated_we),
@@ -2226,6 +2272,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_invert_ctl_key1_in (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_invert_ctl_gated_we),
@@ -2253,6 +2300,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_invert_ctl_key1_out (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_invert_ctl_gated_we),
@@ -2280,6 +2328,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_invert_ctl_key2_in (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_invert_ctl_gated_we),
@@ -2307,6 +2356,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_invert_ctl_key2_out (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_invert_ctl_gated_we),
@@ -2334,6 +2384,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_invert_ctl_pwrb_in (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_invert_ctl_gated_we),
@@ -2361,6 +2412,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_invert_ctl_pwrb_out (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_invert_ctl_gated_we),
@@ -2388,6 +2440,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_invert_ctl_ac_present (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_invert_ctl_gated_we),
@@ -2415,6 +2468,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_invert_ctl_bat_disable (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_invert_ctl_gated_we),
@@ -2442,6 +2496,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_invert_ctl_lid_open (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_invert_ctl_gated_we),
@@ -2469,6 +2524,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_invert_ctl_z3_wakeup (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_invert_ctl_gated_we),
@@ -2501,6 +2557,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_allowed_ctl_bat_disable_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_allowed_ctl_gated_we),
@@ -2528,6 +2585,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_allowed_ctl_ec_rst_l_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_allowed_ctl_gated_we),
@@ -2555,6 +2613,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_allowed_ctl_pwrb_out_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_allowed_ctl_gated_we),
@@ -2582,6 +2641,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_allowed_ctl_key0_out_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_allowed_ctl_gated_we),
@@ -2609,6 +2669,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_allowed_ctl_key1_out_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_allowed_ctl_gated_we),
@@ -2636,6 +2697,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_allowed_ctl_key2_out_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_allowed_ctl_gated_we),
@@ -2663,6 +2725,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_allowed_ctl_z3_wakeup_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_allowed_ctl_gated_we),
@@ -2690,6 +2753,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_allowed_ctl_flash_wp_l_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_allowed_ctl_gated_we),
@@ -2717,6 +2781,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_allowed_ctl_bat_disable_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_allowed_ctl_gated_we),
@@ -2744,6 +2809,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_allowed_ctl_ec_rst_l_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_allowed_ctl_gated_we),
@@ -2771,6 +2837,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_allowed_ctl_pwrb_out_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_allowed_ctl_gated_we),
@@ -2798,6 +2865,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_allowed_ctl_key0_out_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_allowed_ctl_gated_we),
@@ -2825,6 +2893,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_allowed_ctl_key1_out_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_allowed_ctl_gated_we),
@@ -2852,6 +2921,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_allowed_ctl_key2_out_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_allowed_ctl_gated_we),
@@ -2879,6 +2949,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_allowed_ctl_z3_wakeup_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_allowed_ctl_gated_we),
@@ -2906,6 +2977,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_allowed_ctl_flash_wp_l_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_allowed_ctl_gated_we),
@@ -2935,6 +3007,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_out_ctl_bat_disable (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_out_ctl_we),
@@ -2962,6 +3035,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_out_ctl_ec_rst_l (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_out_ctl_we),
@@ -2989,6 +3063,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_out_ctl_pwrb_out (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_out_ctl_we),
@@ -3016,6 +3091,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_out_ctl_key0_out (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_out_ctl_we),
@@ -3043,6 +3119,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_out_ctl_key1_out (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_out_ctl_we),
@@ -3070,6 +3147,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_out_ctl_key2_out (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_out_ctl_we),
@@ -3097,6 +3175,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_out_ctl_z3_wakeup (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_out_ctl_we),
@@ -3124,6 +3203,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_out_ctl_flash_wp_l (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_out_ctl_we),
@@ -3153,6 +3233,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_out_value_bat_disable (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_out_value_we),
@@ -3180,6 +3261,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_out_value_ec_rst_l (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_out_value_we),
@@ -3207,6 +3289,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_out_value_pwrb_out (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_out_value_we),
@@ -3234,6 +3317,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_out_value_key0_out (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_out_value_we),
@@ -3261,6 +3345,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_out_value_key1_out (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_out_value_we),
@@ -3288,6 +3373,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_out_value_key2_out (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_out_value_we),
@@ -3315,6 +3401,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_out_value_z3_wakeup (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_out_value_we),
@@ -3342,6 +3429,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_out_value_flash_wp_l (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_pin_out_value_we),
@@ -3371,6 +3459,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_in_value_pwrb_in (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (1'b0),
@@ -3398,6 +3487,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_in_value_key0_in (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (1'b0),
@@ -3425,6 +3515,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_in_value_key1_in (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (1'b0),
@@ -3452,6 +3543,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_in_value_key2_in (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (1'b0),
@@ -3479,6 +3571,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_in_value_lid_open (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (1'b0),
@@ -3506,6 +3599,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_in_value_ac_present (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (1'b0),
@@ -3533,6 +3627,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_in_value_ec_rst_l (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (1'b0),
@@ -3560,6 +3655,7 @@ module sysrst_ctrl_reg_top (
   ) u_pin_in_value_flash_wp_l (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (1'b0),
@@ -3592,6 +3688,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_ctl_pwrb_in_h2l (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_intr_ctl_gated_we),
@@ -3619,6 +3716,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_ctl_key0_in_h2l (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_intr_ctl_gated_we),
@@ -3646,6 +3744,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_ctl_key1_in_h2l (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_intr_ctl_gated_we),
@@ -3673,6 +3772,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_ctl_key2_in_h2l (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_intr_ctl_gated_we),
@@ -3700,6 +3800,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_ctl_ac_present_h2l (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_intr_ctl_gated_we),
@@ -3727,6 +3828,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_ctl_ec_rst_l_h2l (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_intr_ctl_gated_we),
@@ -3754,6 +3856,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_ctl_flash_wp_l_h2l (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_intr_ctl_gated_we),
@@ -3781,6 +3884,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_ctl_pwrb_in_l2h (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_intr_ctl_gated_we),
@@ -3808,6 +3912,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_ctl_key0_in_l2h (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_intr_ctl_gated_we),
@@ -3835,6 +3940,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_ctl_key1_in_l2h (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_intr_ctl_gated_we),
@@ -3862,6 +3968,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_ctl_key2_in_l2h (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_intr_ctl_gated_we),
@@ -3889,6 +3996,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_ctl_ac_present_l2h (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_intr_ctl_gated_we),
@@ -3916,6 +4024,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_ctl_ec_rst_l_l2h (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_intr_ctl_gated_we),
@@ -3943,6 +4052,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_ctl_flash_wp_l_l2h (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_intr_ctl_gated_we),
@@ -3975,6 +4085,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_debounce_ctl (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_key_intr_debounce_ctl_gated_we),
@@ -4008,6 +4119,7 @@ module sysrst_ctrl_reg_top (
   ) u_auto_block_debounce_ctl_debounce_timer (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_auto_block_debounce_ctl_gated_we),
@@ -4035,6 +4147,7 @@ module sysrst_ctrl_reg_top (
   ) u_auto_block_debounce_ctl_auto_block_enable (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_auto_block_debounce_ctl_gated_we),
@@ -4068,6 +4181,7 @@ module sysrst_ctrl_reg_top (
   ) u_auto_block_out_ctl_key0_out_sel (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_auto_block_out_ctl_gated_we),
@@ -4095,6 +4209,7 @@ module sysrst_ctrl_reg_top (
   ) u_auto_block_out_ctl_key1_out_sel (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_auto_block_out_ctl_gated_we),
@@ -4122,6 +4237,7 @@ module sysrst_ctrl_reg_top (
   ) u_auto_block_out_ctl_key2_out_sel (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_auto_block_out_ctl_gated_we),
@@ -4149,6 +4265,7 @@ module sysrst_ctrl_reg_top (
   ) u_auto_block_out_ctl_key0_out_value (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_auto_block_out_ctl_gated_we),
@@ -4176,6 +4293,7 @@ module sysrst_ctrl_reg_top (
   ) u_auto_block_out_ctl_key1_out_value (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_auto_block_out_ctl_gated_we),
@@ -4203,6 +4321,7 @@ module sysrst_ctrl_reg_top (
   ) u_auto_block_out_ctl_key2_out_value (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_auto_block_out_ctl_gated_we),
@@ -4236,6 +4355,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_0_key0_in_sel_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_0_gated_we),
@@ -4263,6 +4383,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_0_key1_in_sel_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_0_gated_we),
@@ -4290,6 +4411,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_0_key2_in_sel_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_0_gated_we),
@@ -4317,6 +4439,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_0_pwrb_in_sel_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_0_gated_we),
@@ -4344,6 +4467,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_0_ac_present_sel_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_0_gated_we),
@@ -4377,6 +4501,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_1_key0_in_sel_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_1_gated_we),
@@ -4404,6 +4529,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_1_key1_in_sel_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_1_gated_we),
@@ -4431,6 +4557,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_1_key2_in_sel_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_1_gated_we),
@@ -4458,6 +4585,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_1_pwrb_in_sel_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_1_gated_we),
@@ -4485,6 +4613,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_1_ac_present_sel_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_1_gated_we),
@@ -4518,6 +4647,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_2_key0_in_sel_2 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_2_gated_we),
@@ -4545,6 +4675,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_2_key1_in_sel_2 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_2_gated_we),
@@ -4572,6 +4703,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_2_key2_in_sel_2 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_2_gated_we),
@@ -4599,6 +4731,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_2_pwrb_in_sel_2 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_2_gated_we),
@@ -4626,6 +4759,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_2_ac_present_sel_2 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_2_gated_we),
@@ -4659,6 +4793,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_3_key0_in_sel_3 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_3_gated_we),
@@ -4686,6 +4821,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_3_key1_in_sel_3 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_3_gated_we),
@@ -4713,6 +4849,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_3_key2_in_sel_3 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_3_gated_we),
@@ -4740,6 +4877,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_3_pwrb_in_sel_3 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_3_gated_we),
@@ -4767,6 +4905,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_sel_ctl_3_ac_present_sel_3 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_sel_ctl_3_gated_we),
@@ -4799,6 +4938,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_det_ctl_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_det_ctl_0_gated_we),
@@ -4831,6 +4971,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_det_ctl_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_det_ctl_1_gated_we),
@@ -4863,6 +5004,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_det_ctl_2 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_det_ctl_2_gated_we),
@@ -4895,6 +5037,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_pre_det_ctl_3 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_pre_det_ctl_3_gated_we),
@@ -4928,6 +5071,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_0_key0_in_sel_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_0_gated_we),
@@ -4955,6 +5099,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_0_key1_in_sel_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_0_gated_we),
@@ -4982,6 +5127,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_0_key2_in_sel_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_0_gated_we),
@@ -5009,6 +5155,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_0_pwrb_in_sel_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_0_gated_we),
@@ -5036,6 +5183,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_0_ac_present_sel_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_0_gated_we),
@@ -5069,6 +5217,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_1_key0_in_sel_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_1_gated_we),
@@ -5096,6 +5245,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_1_key1_in_sel_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_1_gated_we),
@@ -5123,6 +5273,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_1_key2_in_sel_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_1_gated_we),
@@ -5150,6 +5301,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_1_pwrb_in_sel_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_1_gated_we),
@@ -5177,6 +5329,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_1_ac_present_sel_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_1_gated_we),
@@ -5210,6 +5363,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_2_key0_in_sel_2 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_2_gated_we),
@@ -5237,6 +5391,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_2_key1_in_sel_2 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_2_gated_we),
@@ -5264,6 +5419,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_2_key2_in_sel_2 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_2_gated_we),
@@ -5291,6 +5447,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_2_pwrb_in_sel_2 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_2_gated_we),
@@ -5318,6 +5475,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_2_ac_present_sel_2 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_2_gated_we),
@@ -5351,6 +5509,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_3_key0_in_sel_3 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_3_gated_we),
@@ -5378,6 +5537,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_3_key1_in_sel_3 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_3_gated_we),
@@ -5405,6 +5565,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_3_key2_in_sel_3 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_3_gated_we),
@@ -5432,6 +5593,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_3_pwrb_in_sel_3 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_3_gated_we),
@@ -5459,6 +5621,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_sel_ctl_3_ac_present_sel_3 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_sel_ctl_3_gated_we),
@@ -5491,6 +5654,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_det_ctl_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_det_ctl_0_gated_we),
@@ -5523,6 +5687,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_det_ctl_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_det_ctl_1_gated_we),
@@ -5555,6 +5720,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_det_ctl_2 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_det_ctl_2_gated_we),
@@ -5587,6 +5753,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_det_ctl_3 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_det_ctl_3_gated_we),
@@ -5620,6 +5787,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_out_ctl_0_bat_disable_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_out_ctl_0_gated_we),
@@ -5647,6 +5815,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_out_ctl_0_interrupt_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_out_ctl_0_gated_we),
@@ -5674,6 +5843,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_out_ctl_0_ec_rst_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_out_ctl_0_gated_we),
@@ -5701,6 +5871,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_out_ctl_0_rst_req_0 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_out_ctl_0_gated_we),
@@ -5734,6 +5905,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_out_ctl_1_bat_disable_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_out_ctl_1_gated_we),
@@ -5761,6 +5933,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_out_ctl_1_interrupt_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_out_ctl_1_gated_we),
@@ -5788,6 +5961,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_out_ctl_1_ec_rst_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_out_ctl_1_gated_we),
@@ -5815,6 +5989,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_out_ctl_1_rst_req_1 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_out_ctl_1_gated_we),
@@ -5848,6 +6023,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_out_ctl_2_bat_disable_2 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_out_ctl_2_gated_we),
@@ -5875,6 +6051,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_out_ctl_2_interrupt_2 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_out_ctl_2_gated_we),
@@ -5902,6 +6079,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_out_ctl_2_ec_rst_2 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_out_ctl_2_gated_we),
@@ -5929,6 +6107,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_out_ctl_2_rst_req_2 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_out_ctl_2_gated_we),
@@ -5962,6 +6141,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_out_ctl_3_bat_disable_3 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_out_ctl_3_gated_we),
@@ -5989,6 +6169,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_out_ctl_3_interrupt_3 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_out_ctl_3_gated_we),
@@ -6016,6 +6197,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_out_ctl_3_ec_rst_3 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_out_ctl_3_gated_we),
@@ -6043,6 +6225,7 @@ module sysrst_ctrl_reg_top (
   ) u_com_out_ctl_3_rst_req_3 (
     .clk_i   (clk_aon_i),
     .rst_ni  (rst_aon_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (aon_com_out_ctl_3_gated_we),
@@ -6072,6 +6255,7 @@ module sysrst_ctrl_reg_top (
   ) u_combo_intr_status_combo0_h2l (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (combo_intr_status_we),
@@ -6099,6 +6283,7 @@ module sysrst_ctrl_reg_top (
   ) u_combo_intr_status_combo1_h2l (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (combo_intr_status_we),
@@ -6126,6 +6311,7 @@ module sysrst_ctrl_reg_top (
   ) u_combo_intr_status_combo2_h2l (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (combo_intr_status_we),
@@ -6153,6 +6339,7 @@ module sysrst_ctrl_reg_top (
   ) u_combo_intr_status_combo3_h2l (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (combo_intr_status_we),
@@ -6182,6 +6369,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_status_pwrb_h2l (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (key_intr_status_we),
@@ -6209,6 +6397,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_status_key0_in_h2l (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (key_intr_status_we),
@@ -6236,6 +6425,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_status_key1_in_h2l (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (key_intr_status_we),
@@ -6263,6 +6453,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_status_key2_in_h2l (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (key_intr_status_we),
@@ -6290,6 +6481,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_status_ac_present_h2l (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (key_intr_status_we),
@@ -6317,6 +6509,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_status_ec_rst_l_h2l (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (key_intr_status_we),
@@ -6344,6 +6537,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_status_flash_wp_l_h2l (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (key_intr_status_we),
@@ -6371,6 +6565,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_status_pwrb_l2h (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (key_intr_status_we),
@@ -6398,6 +6593,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_status_key0_in_l2h (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (key_intr_status_we),
@@ -6425,6 +6621,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_status_key1_in_l2h (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (key_intr_status_we),
@@ -6452,6 +6649,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_status_key2_in_l2h (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (key_intr_status_we),
@@ -6479,6 +6677,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_status_ac_present_l2h (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (key_intr_status_we),
@@ -6506,6 +6705,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_status_ec_rst_l_l2h (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (key_intr_status_we),
@@ -6533,6 +6733,7 @@ module sysrst_ctrl_reg_top (
   ) u_key_intr_status_flash_wp_l_l2h (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
+    .reinit_i(1'b0),
 
     // from register interface
     .we     (key_intr_status_we),
@@ -6659,7 +6860,9 @@ module sysrst_ctrl_reg_top (
   assign intr_test_wd = reg_wdata[0];
   assign alert_test_we = addr_hit[3] & reg_we & !reg_error;
 
-  assign alert_test_wd = reg_wdata[0];
+  assign alert_test_fatal_fault_wd = reg_wdata[0];
+
+  assign alert_test_regwen_wd = reg_wdata[31];
   assign regwen_we = addr_hit[4] & reg_we & !reg_error;
 
   assign regwen_wd = reg_wdata[0];
@@ -6941,6 +7144,7 @@ module sysrst_ctrl_reg_top (
 
       addr_hit[3]: begin
         reg_rdata_next[0] = '0;
+        reg_rdata_next[31] = alert_test_regwen_qs;
       end
 
       addr_hit[4]: begin
